@@ -1,11 +1,7 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
-package resource
+package provider
 
 import (
 	"fmt"
-	"github.com/skpr/terraform-provider-skpraws/internal/provider"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -16,39 +12,39 @@ import (
 
 func TestAccManagedLoginBrandingResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { provider.testAccPreCheck(t) },
-		ProtoV6ProviderFactories: provider.testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccManagedLoginBrandingResourceConfig(true),
+				Config: testAccManagedLoginBrandingResourceConfig("{}"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"cognito_managed_login_branding.test",
-						tfjsonpath.New("use_cognito_provided_values"),
-						knownvalue.Bool(true),
+						"skpraws_managed_login_branding.test",
+						tfjsonpath.New("settings"),
+						knownvalue.StringExact("{}"),
 					),
 				},
 			},
 			// ImportState testing
 			{
-				ResourceName:      "cognito_managed_login_branding.test",
+				ResourceName:      "skpraws_managed_login_branding.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// This is not normally necessary, but is here because this
 				// example code does not have an actual upstream service.
 				// Once the Read method is able to refresh information from
 				// the upstream service, this can be removed.
-				ImportStateVerifyIgnore: []string{"use_cognito_provided_values"},
+				ImportStateVerifyIgnore: []string{"settings"},
 			},
 			// Update and Read testing
 			{
-				Config: testAccManagedLoginBrandingResourceConfig(false),
+				Config: testAccManagedLoginBrandingResourceConfig("{test = true}"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
-						"cognito_managed_login_branding.test",
-						tfjsonpath.New("use_cognito_provided_values"),
-						knownvalue.Bool(false),
+						"skpraws_managed_login_branding.test",
+						tfjsonpath.New("settings"),
+						knownvalue.StringExact("{test = true}"),
 					),
 				},
 			},
@@ -57,13 +53,12 @@ func TestAccManagedLoginBrandingResource(t *testing.T) {
 	})
 }
 
-func testAccManagedLoginBrandingResourceConfig(useCognitoProvidedValues bool) string {
+func testAccManagedLoginBrandingResourceConfig(settings string) string {
 	return fmt.Sprintf(`
-resource "cognito_managed_login_branding" "test" {
+resource "skpraws_managed_login_branding" "test" {
   client_id = "abc"
   user_pool_id = "abc"
-  use_cognito_provided_values = %t
-  settings = "{}"
+  settings = "%s"
 }
-`, useCognitoProvidedValues)
+`, settings)
 }

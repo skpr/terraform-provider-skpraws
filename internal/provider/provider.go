@@ -13,8 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	skprresource "github.com/skpr/terraform-provider-skpraws/internal/resource"
 )
 
 var _ provider.Provider = &SkprAwsProvider{}
@@ -79,7 +77,7 @@ func (p *SkprAwsProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *SkprAwsProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		skprresource.NewManagedLoginBrandingResource,
+		NewManagedLoginBrandingResource,
 	}
 }
 
@@ -95,7 +93,7 @@ func (p *SkprAwsProvider) Functions(ctx context.Context) []func() function.Funct
 	return []func() function.Function{}
 }
 
-func New(version string) func() provider.Provider {
+func NewSkprAwsProvider(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &SkprAwsProvider{
 			version: version,
