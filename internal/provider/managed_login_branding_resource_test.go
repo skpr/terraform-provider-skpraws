@@ -59,6 +59,13 @@ resource "skpraws_managed_login_branding" "test" {
   client_id = "abc"
   user_pool_id = "abc"
   settings = "%s"
+  assets = [
+    {
+      category = "PAGE_BACKGROUND"
+      color_mode = "LIGHT"
+      bytes = "ABCDEFGH"
+    },
+  ]
 }
 `, settings)
 }
