@@ -1,4 +1,4 @@
 provider "skpraws" {
-    region  = "aws-region"
-    profile = "aws-profile"
+  region  = "aws-region"
+  profile = "aws-profile"
 }
