@@ -8,12 +8,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/document"
+	awstypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	tftypes "github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/skpr/terraform-provider-skpraws/internal/types"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,10 +31,17 @@ type ManagedLoginBrandingResource struct {
 }
 
 type ManagedLoginBrandingModel struct {
-	Id         types.String `tfsdk:"id"`
-	ClientId   types.String `tfsdk:"client_id"`
-	UserPoolId types.String `tfsdk:"user_pool_id"`
-	Settings   types.String `tfsdk:"settings"`
+	Id         tftypes.String              `tfsdk:"id"`
+	ClientId   tftypes.String              `tfsdk:"client_id"`
+	UserPoolId tftypes.String              `tfsdk:"user_pool_id"`
+	Settings   tftypes.String              `tfsdk:"settings"`
+	Assets     []ManagedLoginBrandingAsset `tfsdk:"assets"`
+}
+
+type ManagedLoginBrandingAsset struct {
+	Category  tftypes.String `tfsdk:"category"`
+	ColorMode tftypes.String `tfsdk:"color_mode"`
+	Bytes     tftypes.String `tfsdk:"bytes"`
 }
 
 func (r *ManagedLoginBrandingResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -62,6 +72,26 @@ func (r *ManagedLoginBrandingResource) Schema(ctx context.Context, req resource.
 			"settings": schema.StringAttribute{
 				MarkdownDescription: "Settings for branding",
 				Optional:            true,
+			},
+			"assets": schema.ListNestedAttribute{
+				MarkdownDescription: "Assets for branding.",
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"category": schema.StringAttribute{
+							Description: "Category to fill for the asset",
+							Required:    true,
+						},
+						"color_mode": schema.StringAttribute{
+							Description: "light or dark color mode the asset will be used for",
+							Required:    true,
+						},
+						"bytes": schema.StringAttribute{
+							Description: "actual file data",
+							Required:    true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -109,13 +139,28 @@ func (r *ManagedLoginBrandingResource) Create(ctx context.Context, req resource.
 		}
 		input.Settings = document.NewLazyDocument(jsonData)
 	}
+	for _, asset := range data.Assets {
+		cognitoAsset := awstypes.AssetType{
+			Category:  types.AssetCategoryTypeFromString(asset.Category.ValueString()),
+			ColorMode: types.ColorSchemeModeTypeFromString(asset.ColorMode.ValueString()),
+			Bytes:     []byte(asset.Bytes.ValueString()),
+			Extension: types.AssetExtensionTypeFromString("SVG"),
+		}
+		input.Assets = append(input.Assets, cognitoAsset)
+	}
 	out, err := cognito.CreateManagedLoginBranding(ctx, &input)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create resource, got error: %s", err))
 		return
 	}
 
-	data.Id = types.StringValue(*out.ManagedLoginBranding.ManagedLoginBrandingId)
+	data.Id = tftypes.StringValue(*out.ManagedLoginBranding.ManagedLoginBrandingId)
+	for _, asset := range out.ManagedLoginBranding.Assets {
+		modelAsset := ManagedLoginBrandingAsset{
+			Bytes: tftypes.StringValue(string(asset.Bytes)),
+		}
+		data.Assets = append(data.Assets, modelAsset)
+	}
 
 	tflog.Trace(ctx, "created Managed Login Branding resource")
 
@@ -139,8 +184,8 @@ func (r *ManagedLoginBrandingResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	data.Id = types.StringValue(*out.ManagedLoginBranding.ManagedLoginBrandingId)
-	data.UserPoolId = types.StringValue(*out.ManagedLoginBranding.UserPoolId)
+	data.Id = tftypes.StringValue(*out.ManagedLoginBranding.ManagedLoginBrandingId)
+	data.UserPoolId = tftypes.StringValue(*out.ManagedLoginBranding.UserPoolId)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -166,6 +211,15 @@ func (r *ManagedLoginBrandingResource) Update(ctx context.Context, req resource.
 			return
 		}
 		input.Settings = document.NewLazyDocument(jsonData)
+	}
+	for _, asset := range data.Assets {
+		cognitoAsset := awstypes.AssetType{
+			Category:  types.AssetCategoryTypeFromString(asset.Category.ValueString()),
+			ColorMode: types.ColorSchemeModeTypeFromString(asset.ColorMode.ValueString()),
+			Bytes:     []byte(asset.Bytes.ValueString()),
+			Extension: types.AssetExtensionTypeFromString("SVG"),
+		}
+		input.Assets = append(input.Assets, cognitoAsset)
 	}
 	_, err := cognito.UpdateManagedLoginBranding(ctx, &input)
 	if err != nil {
