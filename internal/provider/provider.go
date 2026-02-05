@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -59,6 +59,7 @@ func (p *SkprAwsProvider) Configure(ctx context.Context, req provider.ConfigureR
 		awsConfig aws.Config
 		err       error
 	)
+
 	if data.Profile.IsNull() {
 		awsConfig, err = config.LoadDefaultConfig(context.TODO())
 	} else {
